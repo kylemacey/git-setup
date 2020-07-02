@@ -1,0 +1,12 @@
+[package]
+name = "git-setup"
+version = "0.1.0"
+authors = ["kyle"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+git2 = "0.13"
+regex = "1"
+url = "2.1.1"
