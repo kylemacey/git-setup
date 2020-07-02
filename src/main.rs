@@ -4,28 +4,40 @@ use regex::Regex;
 use url::Url;
 use std::path::Path;
 
+struct Config {
+    git_home: String,
+}
+
+impl Config {
+    fn new() -> Config {
+        Config {
+            git_home: env::var("GIT_HOME").expect("Failed to read GIT_HOME environment variable"),
+        }
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
-    
+    let config = Config::new();
     
     if args.len() < 2 {
         panic!("Expected to find a URL but none was provided")
     }
     
     let user_input = &args[1];
-    let url = Url::parse(user_input);
 
-    match url {
-        Ok(u) => clone_url(&u.into_string()),
-        Err(_e) => clone_path(&user_input),
-    }
+    let url = match Url::parse(user_input) {
+        Ok(u) => u.into_string(),
+        Err(_e) => path_to_url(&user_input),
+    };
+
+    clone_url(&url, &config);
 }
 
-fn clone_url(url: &String) {
+fn clone_url(url: &String, config: &Config) {
     let path_regex = Regex::new(r"[\w\-\.]+/[\w\-\.]+\z").unwrap();
     let relative_path = path_regex.find(url).unwrap();
-    let git_home = env::var("GIT_HOME").expect("Failed to read GIT_HOME environment variable");
-    let dest_path = format!("{}/{}", git_home, relative_path.as_str());
+    let dest_path = format!("{}/{}", config.git_home, relative_path.as_str());
 
     let mut callbacks = RemoteCallbacks::new();
     callbacks.credentials(|_url, username_from_url, _allowed_types| {
@@ -47,17 +59,15 @@ fn clone_url(url: &String) {
         Ok(repo) => repo,
         Err(e) => panic!("failed to clone: {}", e),
     };
-
-    env::set_current_dir(&dest_path).unwrap();
 }
 
-fn clone_path(path: &String) {
+fn path_to_url(path: &String) -> String {
     let mut url = String::from("https://github.com/");
     let path_regex = Regex::new(r"\A[\w\-\.]+/[\w\-\.]+\z").unwrap();
 
-    if path_regex.is_match(path) {
+    if path_regex.is_match(&path) {
         url.push_str(path);
-        clone_url(&url)
+        url 
     } else {
         panic!("I don't know what to do with your input")
     }
